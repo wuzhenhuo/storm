@@ -331,8 +331,16 @@ class FileIOHelper:
 
     @staticmethod
     def load_str(path):
-        with open(path, 'r') as f:
-            return '\n'.join(f.readlines())
+        try:
+            # First, try reading with UTF-8 encoding
+            with codecs.open(path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except UnicodeDecodeError:
+            # If UTF-8 fails, try reading with 'ascii' encoding and ignore errors
+            with codecs.open(path, 'r', encoding='ascii', errors='ignore') as f:
+                content = f.read()
+            print(f"Warning: Some non-ASCII characters were ignored when reading from {path}")
+            return content
 
     @staticmethod
     def dump_pickle(obj, path):
