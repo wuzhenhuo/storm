@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from typing import Union, Literal, Optional
 
@@ -157,6 +158,29 @@ class STORMWikiRunner(Engine):
         self.lm_configs.init_check()
         self.apply_decorators()
 
+    @staticmethod
+    def sanitize_filename(filename):
+        """
+        Sanitize the filename to ensure it's valid across different operating systems.
+        """
+        # Replace spaces and underscores with hyphens
+        filename = re.sub(r'[\s_]+', '-', filename)
+
+        # Remove any character that isn't alphanumeric or hyphen
+        filename = re.sub(r'[^a-zA-Z0-9-]', '', filename)
+
+        # Remove leading and trailing hyphens
+        filename = filename.strip('-')
+
+        # Ensure the filename isn't empty after sanitization
+        if not filename:
+            filename = "unnamed-topic"
+
+        # Truncate to a reasonable length (e.g., 255 characters)
+        filename = filename[:255]
+
+        return filename
+
     def run_knowledge_curation_module(self,
                                       ground_truth_url: str = "None",
                                       callback_handler: BaseCallbackHandler = None) -> StormInformationTable:
@@ -277,7 +301,7 @@ class STORMWikiRunner(Engine):
             makeStringRed("No action is specified. Please set at least one of --do-research, --do-generate-outline, --do-generate-article, --do-polish-article")
 
         self.topic = topic
-        self.article_dir_name = topic.replace(' ', '_').replace('/', '_')
+        self.article_dir_name = self.sanitize_filename(topic)
         self.article_output_dir = os.path.join(self.args.output_dir, self.article_dir_name)
         os.makedirs(self.article_output_dir, exist_ok=True)
 
