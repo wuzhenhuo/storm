@@ -4,6 +4,8 @@ import os
 import pickle
 import re
 import sys
+import codecs
+import unicodedata
 from typing import List, Dict
 
 import httpx
@@ -313,13 +315,32 @@ class FileIOHelper:
 
     @staticmethod
     def write_str(s, path):
-        with open(path, 'w') as f:
-            f.write(s)
+        def normalize_unicode(text):
+            return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
+
+        try:
+            # First, try writing with UTF-8 encoding
+            with codecs.open(path, 'w', encoding='utf-8') as f:
+                f.write(s)
+        except UnicodeEncodeError:
+            # If UTF-8 fails, normalize the string and try again
+            normalized_s = normalize_unicode(s)
+            with codecs.open(path, 'w', encoding='utf-8') as f:
+                f.write(normalized_s)
+            print(f"Warning: Some non-ASCII characters were removed when writing to {path}")
 
     @staticmethod
     def load_str(path):
-        with open(path, 'r') as f:
-            return '\n'.join(f.readlines())
+        try:
+            # First, try reading with UTF-8 encoding
+            with codecs.open(path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except UnicodeDecodeError:
+            # If UTF-8 fails, try reading with 'ascii' encoding and ignore errors
+            with codecs.open(path, 'r', encoding='ascii', errors='ignore') as f:
+                content = f.read()
+            print(f"Warning: Some non-ASCII characters were ignored when reading from {path}")
+            return content
 
     @staticmethod
     def dump_pickle(obj, path):
